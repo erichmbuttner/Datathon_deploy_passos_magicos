@@ -6,12 +6,52 @@ import numpy as np
 df_Dist_mun = pd.read_csv('Distorcao_idade_serie_municipio_qedu.csv', encoding='cp1252',sep=';')
 df_Ideb_mun = pd.read_csv('ideb_municipio.csv', encoding='cp1252',sep=';')
 df_seab_mun = pd.read_csv('saeb_aprendizado_municipio.csv', encoding='cp1252',sep=';')
+df_passos = pd.read_csv('PEDE_PASSOS_DATASET_FIAP_limpa.csv', encoding='UTF-8',sep=';')
 
 tab1, tab2 = st.tabs(["Dashboard Passos Magicos", "Dashboard Educação"])
 
 with tab1:
     st.title('Dashboard da Passos Mágicos')
+    
+    tab6, tab7 = st.tabs([":clipboard: Data Frame", ":chart_with_upwards_trend: Gráficos"])
+    
+    with tab6:
+        
+        st.write('Dataframe com os dados para pesquisa')
+        # Filtros para o dashboard
+        col7, col8, col9 = st.columns(3)
+        
+        with col7:
+            nomes = df_passos['NOME'].unique()
+            
+            nome_selecionado     = st.multiselect('Nome', nomes)
+            if len(nome_selecionado) > 0:
+                df_passos_filtrado = df_passos[df_passos['NOME'].isin(nome_selecionado)]
 
+        with col8:
+            instituicao = df_passos['INSTITUICAO_ENSINO_ALUNO_2020'].unique()
+            inst_selecionado     = st.multiselect('Instituição', instituicao)
+            
+            if len(inst_selecionado) > 0:
+                if len(nome_selecionado) > 0:
+                    df_passos_filtrado = df_passos[(df_passos['INSTITUICAO_ENSINO_ALUNO_2020'].isin(inst_selecionado)) & (df_passos['NOME'].isin(nome_selecionado))]
+                else:
+                    df_passos_filtrado = df_passos[df_passos['INSTITUICAO_ENSINO_ALUNO_2020'].isin(inst_selecionado)]
+                        
+        if not nome_selecionado and not inst_selecionado:
+            st.dataframe(df_passos, use_container_width=True)
+        else:
+            st.dataframe(df_passos_filtrado, use_container_width=True)
+    
+    with tab7:
+        # Gráficos para o dashboard
+        
+        nomes = df_passos['NOME'].unique()
+        nome_selecionado     = st.selectbox('Nome', nomes)
+        df_passos_filtrado = df_passos[df_passos['NOME'] == nome_selecionado]
+        
+        # Gráfico de Linhas
+        #fig, ax = plt.subplots(figsize=(20, 10))
 with tab2:
     # Criando o dashboard com Streamlit
     st.title('Dashboard de Sucesso Escolar')
