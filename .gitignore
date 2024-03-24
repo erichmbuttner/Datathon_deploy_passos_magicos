@@ -1,0 +1,3 @@
+#Arquivos que serão ignorados pelo git
+*.code-workspace
+
