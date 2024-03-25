@@ -1,12 +1,14 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 
 df_Dist_mun = pd.read_csv('Distorcao_idade_serie_municipio_qedu.csv', encoding='cp1252',sep=';')
 df_Ideb_mun = pd.read_csv('ideb_municipio.csv', encoding='cp1252',sep=';')
 df_seab_mun = pd.read_csv('saeb_aprendizado_municipio.csv', encoding='cp1252',sep=';')
 df_passos = pd.read_csv('PEDE_PASSOS_DATASET_FIAP_limpa.csv', encoding='UTF-8',sep=';')
+df_passos_pivot = pd.read_csv('PEDE_PASSOS_DATASET_FIAP_PIVOT.csv',encoding='ISO-8859-1',sep=';')
 
 tab1, tab2 = st.tabs(["Dashboard Passos Magicos", "Dashboard Educação"])
 
@@ -44,14 +46,50 @@ with tab1:
             st.dataframe(df_passos_filtrado, use_container_width=True)
     
     with tab7:
+        df_passos_pivot = df_passos_pivot[~df_passos_pivot['PEDRA'].isin(['#NULO!', 'D9891/2A'])]
+        df_passos_pivot['DESTAQUE_IEG'] = df_passos_pivot['DESTAQUE_IEG'].replace({'Ponto a melhorar em 2021:': 'Melhorar:', 'Seu destaque em 2020:': 'Destaque:'}, regex=True)
+        df_passos_pivot['DESTAQUE_IDA'] = df_passos_pivot['DESTAQUE_IDA'].replace({'Ponto a melhorar em 2021:': 'Melhorar:', 'Seu destaque em 2020:': 'Destaque:'}, regex=True)
+        df_passos_pivot['DESTAQUE_IPV'] = df_passos_pivot['DESTAQUE_IPV'].replace({'Ponto a melhorar em 2021:': 'Melhorar:', 'Seu destaque em 2020:': 'Destaque:'}, regex=True)
         # Gráficos para o dashboard
         
-        nomes = df_passos['NOME'].unique()
-        nome_selecionado     = st.selectbox('Nome', nomes)
-        df_passos_filtrado = df_passos[df_passos['NOME'] == nome_selecionado]
+        nomes = df_passos_pivot['NOME'].unique()
+        nomes_selecionados = st.multiselect('Nome', nomes, default=nomes)
+
+        anos = df_passos_pivot['Ano'].unique()
+        anos_selecionados = st.multiselect('Ano', anos, default=anos)
         
-        # Gráfico de Linhas
-        #fig, ax = plt.subplots(figsize=(20, 10))
+        # Filtrar o DataFrame pelos nomes e anos selecionados
+        df_filtrado_nome = df_passos_pivot[df_passos_pivot['NOME'].isin(nomes_selecionados)]
+        df_filtrado_ano = df_passos_pivot[df_passos_pivot['Ano'].isin(anos_selecionados)]
+        
+        # Agrupar por 'Ano' e 'PEDRA' e contar o número de alunos
+        df_grouped_nome = df_filtrado_nome.groupby(['Ano', 'PEDRA']).size().reset_index(name='Quantidade')
+        df_grouped_ano = df_filtrado_ano.groupby('PEDRA').size()
+        
+        # Criar subplots
+        fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+        
+        # Gráfico de barras empilhadas
+        df_grouped_nome.pivot(index='Ano', columns='PEDRA', values='Quantidade').plot(kind='bar', stacked=True, ax=axs[0])
+        axs[0].set_title('Evolução dos alunos pelas classificações por ano acumulado')
+        axs[0].set_xlabel('Ano')
+        axs[0].set_ylabel('Quantidade de Alunos')
+        
+        # Gráfico de linhas
+        for pedra in df_grouped_nome['PEDRA'].unique():
+            df_pedra = df_grouped_nome[df_grouped_nome['PEDRA'] == pedra]
+            axs[1].plot(df_pedra['Ano'], df_pedra['Quantidade'], label=pedra)
+        axs[1].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        axs[1].set_title('Evolução dos alunos selecionados pelas classificações atingidas por ano')
+        axs[1].set_xlabel('Ano')
+        axs[1].set_ylabel('Quantidade de Alunos')
+        
+        # Gráfico de pizza
+        axs[2].pie(df_grouped_ano, labels = df_grouped_ano.index, autopct='%1.1f%%')
+        axs[2].set_title('Percentual de classificação no ano selecionado')
+        
+        plt.tight_layout()
+        plt.show()
 with tab2:
     # Criando o dashboard com Streamlit
     st.title('Dashboard de Sucesso Escolar')
